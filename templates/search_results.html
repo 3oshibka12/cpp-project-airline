@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Результаты поиска</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        h1 { color: #2c3e50; }
+        .flight { background: #ecf0f1; padding: 15px; margin: 10px 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .flight-info { flex: 1; }
+        .flight-price { font-size: 24px; color: #27ae60; font-weight: bold; margin-right: 20px; }
+        a.btn { background: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; }
+        a.btn:hover { background: #2980b9; }
+        nav { margin-bottom: 30px; }
+        nav a { margin-right: 15px; color: #3498db; text-decoration: none; }
+        .no-results { color: #7f8c8d; font-style: italic; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/">← Новый поиск</a>
+        <a href="/my-bookings">Мои брони</a>
+    </nav>
+    
+    <h1>Найденные рейсы</h1>
+    
+    {{RESULTS}}
+</body>
+</html>

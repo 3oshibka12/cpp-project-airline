@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Успешно!</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 100px auto; padding: 20px; text-align: center; }
+        .success-box { background: #27ae60; color: white; padding: 40px; border-radius: 8px; }
+        h1 { margin: 0 0 20px 0; }
+        a { display: inline-block; margin-top: 20px; color: white; background: #219a52; padding: 10px 20px; text-decoration: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="success-box">
+        <h1>✅ {{MESSAGE}}</h1>
+        <p>{{DETAILS}}</p>
+        <a href="/">На главную</a>
+        <a href="/my-bookings?email={{EMAIL}}">Мои брони</a>
+    </div>
+</body>
+</html>

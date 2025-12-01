@@ -1,0 +1,10 @@
+id,flight_id,passenger_id,seat_num,status
+1,1,1,12A,confirmed
+2,1,2,12B,confirmed
+3,2,1,5F,confirmed
+4,2,3,21A,cancelled
+5,2,3,21A,cancelled
+6,2,3,21A,cancelled
+7,2,3,21A,cancelled
+8,2,3,21A,cancelled
+9,2,3,21A,cancelled

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Мои брони</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        h1 { color: #2c3e50; }
+        form.search { background: #ecf0f1; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 10px; }
+        form.search input { flex: 1; padding: 10px; border: 1px solid #bdc3c7; border-radius: 4px; }
+        form.search button { background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        .booking { background: #ecf0f1; padding: 15px; margin: 10px 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .booking.cancelled { opacity: 0.6; }
+        .status-confirmed { color: #27ae60; font-weight: bold; }
+        .status-cancelled { color: #e74c3c; font-weight: bold; }
+        button.cancel { background: #e74c3c; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; }
+        nav a { margin-right: 15px; color: #3498db; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/">← На главную</a>
+        <a href="/admin">Админка</a>
+    </nav>
+    
+    <h1>Мои бронирования</h1>
+    
+    <form class="search" action="/my-bookings" method="GET">
+        <input type="email" name="email" placeholder="Введите ваш email" value="{{EMAIL}}">
+        <button type="submit">Найти</button>
+    </form>
+    
+    {{BOOKINGS}}
+</body>
+</html>

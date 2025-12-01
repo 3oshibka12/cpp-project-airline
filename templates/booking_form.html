@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Бронирование</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        h1 { color: #2c3e50; }
+        .flight-info { background: #ecf0f1; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        form { background: #fff; padding: 20px; border: 1px solid #bdc3c7; border-radius: 8px; }
+        label { display: block; margin: 10px 0 5px; font-weight: bold; }
+        input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #bdc3c7; border-radius: 4px; box-sizing: border-box; }
+        button { background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #219a52; }
+        .error { background: #e74c3c; color: white; padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+        nav a { color: #3498db; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <nav><a href="/">← На главную</a></nav>
+    
+    <h1>Бронирование билета</h1>
+    
+    <div class="flight-info">
+        <strong>Рейс {{FLIGHT_NUMBER}}</strong><br>
+        {{FLIGHT_FROM}} → {{FLIGHT_TO}}<br>
+        Дата: {{FLIGHT_DATE}}, Время: {{FLIGHT_TIME}}<br>
+        Цена: <strong>{{FLIGHT_PRICE}} руб.</strong>
+    </div>
+    
+    {{ERROR}}
+    
+    <form action="/book" method="POST">
+        <input type="hidden" name="flight_id" value="{{FLIGHT_ID}}">
+        
+        <label>Ваше имя:</label>
+        <input type="text" name="name" required placeholder="Иван Иванов">
+        
+        <label>Email:</label>
+        <input type="email" name="email" required placeholder="ivan@example.com">
+        
+        <label>Телефон:</label>
+        <input type="tel" name="phone" required placeholder="+79001234567">
+        
+        <button type="submit">Забронировать</button>
+    </form>
+</body>
+</html>

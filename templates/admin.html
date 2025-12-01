@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Админ-панель</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 50px auto; padding: 20px; }
+        h1 { color: #2c3e50; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #bdc3c7; }
+        th { background: #2c3e50; color: white; }
+        tr:hover { background: #ecf0f1; }
+        .status-confirmed { color: #27ae60; font-weight: bold; }
+        .status-cancelled { color: #e74c3c; font-weight: bold; }
+        nav a { margin-right: 15px; color: #3498db; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/">← На главную</a>
+        <a href="/my-bookings">Мои брони</a>
+    </nav>
+    
+    <h1>🔧 Админ-панель</h1>
+    <p>Всего бронирований: {{TOTAL}}</p>
+    
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Рейс</th>
+            <th>Пассажир</th>
+            <th>Место</th>
+            <th>Статус</th>
+        </tr>
+        {{ROWS}}
+    </table>
+</body>
+</html>

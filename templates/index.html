@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>АвиаБронь - Главная</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        h1 { color: #2c3e50; }
+        form { background: #ecf0f1; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        label { display: block; margin: 10px 0 5px; font-weight: bold; }
+        input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #bdc3c7; border-radius: 4px; box-sizing: border-box; }
+        button { background: #3498db; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #2980b9; }
+        nav { margin-bottom: 30px; }
+        nav a { margin-right: 15px; color: #3498db; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/">Главная</a>
+        <a href="/my-bookings">Мои брони</a>
+        <a href="/flights">Все рейсы</a>
+        <a href="/admin">Админка</a>
+    </nav>
+    
+    <h1>✈️ Поиск авиабилетов</h1>
+    
+    <form action="/search" method="POST">
+        <label>Откуда:</label>
+        <input type="text" name="from" placeholder="Например: Москва">
+        
+        <label>Куда:</label>
+        <input type="text" name="to" placeholder="Например: Сочи">
+        
+        <label>Дата:</label>
+        <input type="text" name="date" placeholder="Например: 11.06.2025">
+        
+        <button type="submit">Найти рейсы</button>
+    </form>
+</body>
+</html>
