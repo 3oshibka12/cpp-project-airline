@@ -12,13 +12,19 @@
         tr:hover { background: #ecf0f1; }
         .status-confirmed { color: #27ae60; font-weight: bold; }
         .status-cancelled { color: #e74c3c; font-weight: bold; }
+        .cancel { background: #e74c3c; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; }
+        nav { margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
         nav a { margin-right: 15px; color: #3498db; text-decoration: none; }
+        .logout { background: #e74c3c; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; }
     </style>
 </head>
 <body>
     <nav>
-        <a href="/">← На главную</a>
-        <a href="/my-bookings">Мои брони</a>
+        <div>
+            <a href="/">← На главную</a>
+            <a href="/flights">Все рейсы</a>
+        </div>
+        <a class="logout" href="/admin/logout">Выйти</a>
     </nav>
     
     <h1>🔧 Админ-панель</h1>
@@ -31,6 +37,7 @@
             <th>Пассажир</th>
             <th>Место</th>
             <th>Статус</th>
+            <th>Действие</th>
         </tr>
         {{ROWS}}
     </table>

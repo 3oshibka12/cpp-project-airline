@@ -5,8 +5,13 @@
 #include <iostream>
 #include <algorithm>
 #include <regex>
+#include <random>
+#include <ctime>
 
-// === Вспомогательная функция split (такая же как в main) ===
+const string BookingManager::ADMIN_USERNAME = "admin";
+const string BookingManager::ADMIN_PASSWORD = "password";
+
+
 static vector<string> split(const string& s, char delimiter) {
     vector<string> tokens;
     string token;
@@ -17,7 +22,13 @@ static vector<string> split(const string& s, char delimiter) {
     return tokens;
 }
 
-// === Генерация ID ===
+
+string BookingManager::generateSecretCode() {
+    static mt19937 rng(time(nullptr));
+    uniform_int_distribution<int> dist(100000, 999999);
+    return to_string(dist(rng));
+}
+
 int BookingManager::getNextFlightId() {
     int maxId = 0;
     for (const auto& f : flights) {
@@ -42,7 +53,6 @@ int BookingManager::getNextBookingId() {
     return maxId + 1;
 }
 
-// === Поиск по email ===
 Passenger* BookingManager::findPassengerByEmail(const string& email) {
     for (auto& p : passengers) {
         if (p.email == email) {
@@ -52,7 +62,6 @@ Passenger* BookingManager::findPassengerByEmail(const string& email) {
     return nullptr;
 }
 
-// === Поиск рейса по ID ===
 Flight* BookingManager::findFlightById(int id) {
     for (auto& f : flights) {
         if (f.id == id) {
@@ -62,18 +71,15 @@ Flight* BookingManager::findFlightById(int id) {
     return nullptr;
 }
 
-// ============================================================
-// ЗАГРУЗКА ДАННЫХ
-// ============================================================
+
 void BookingManager::loadData() {
     lock_guard<mutex> lock(data_mtx);
     
-    // --- Загрузка рейсов ---
     {
         ifstream file("data/flights.csv");
         if (file.is_open()) {
             string line;
-            getline(file, line); // пропускаем заголовок
+            getline(file, line);
             
             while (getline(file, line)) {
                 vector<string> data = split(line, ',');
@@ -90,7 +96,6 @@ void BookingManager::loadData() {
         }
     }
     
-    // --- Загрузка пассажиров ---
     {
         ifstream file("data/passengers.csv");
         if (file.is_open()) {
@@ -109,7 +114,6 @@ void BookingManager::loadData() {
         }
     }
     
-    // --- Загрузка броней ---
     {
         ifstream file("data/bookings.csv");
         if (file.is_open()) {
@@ -120,9 +124,8 @@ void BookingManager::loadData() {
                 vector<string> data = split(line, ',');
                 if (data.size() < 5) continue;
                 
-                bookings.emplace_back(
-                    stoi(data[0]), stoi(data[1]), stoi(data[2]), data[3], data[4]
-                );
+                string code = (data.size() >= 6) ? data[5] : "";
+                bookings.emplace_back(stoi(data[0]), stoi(data[1]), stoi(data[2]), data[3], data[4], code);
             }
             cout << "Загружено бронирований: " << bookings.size() << endl;
         } else {
@@ -131,13 +134,10 @@ void BookingManager::loadData() {
     }
 }
 
-// ============================================================
-// СОХРАНЕНИЕ ДАННЫХ
-// ============================================================
+
 void BookingManager::saveData() {
     lock_guard<mutex> lock(data_mtx);
     
-    // --- Сохранение рейсов ---
     {
         ofstream file("data/flights.csv");
         if (file.is_open()) {
@@ -150,7 +150,6 @@ void BookingManager::saveData() {
         }
     }
     
-    // --- Сохранение пассажиров ---
     {
         ofstream file("data/passengers.csv");
         if (file.is_open()) {
@@ -161,14 +160,13 @@ void BookingManager::saveData() {
         }
     }
     
-    // --- Сохранение броней ---
     {
         ofstream file("data/bookings.csv");
         if (file.is_open()) {
-            file << "id,flight_id,passenger_id,seat_num,status\n";
+            file << "id,flight_id,passenger_id,seat_num,status,secret_code\n";
             for (const auto& b : bookings) {
                 file << b.id << "," << b.flight_id << "," << b.passenger_id << ","
-                     << b.seat_num << "," << b.status << "\n";
+                    << b.seat_num << "," << b.status << "," << b.secret_code << "\n";
             }
         }
     }
@@ -176,21 +174,17 @@ void BookingManager::saveData() {
     cout << "Данные сохранены" << endl;
 }
 
-// ============================================================
-// ПОИСК РЕЙСОВ
-// ============================================================
+
 vector<Flight> BookingManager::searchFlights(const string& from, const string& to, const string& date) {
     lock_guard<mutex> lock(data_mtx);
     
     vector<Flight> result;
     
     for (const auto& f : flights) {
-        // Проверяем каждое условие (если параметр пустой — пропускаем проверку)
         bool matchFrom = from.empty() || f.from == from;
         bool matchTo = to.empty() || f.to == to;
         bool matchDate = date.empty() || f.date == date;
         
-        // Проверяем, есть ли свободные места
         bool hasSeats = f.seats_booked < f.seats_total;
         
         if (matchFrom && matchTo && matchDate && hasSeats) {
@@ -201,30 +195,23 @@ vector<Flight> BookingManager::searchFlights(const string& from, const string& t
     return result;
 }
 
-// ============================================================
-// БРОНИРОВАНИЕ
-// ============================================================
+
 bool BookingManager::bookFlight(int flightId, const string& name, const string& email,
-                                 const string& phone, string& errorMsg) {
+                                const string& phone, string& errorMsg) {
     lock_guard<mutex> lock(data_mtx);
     
 
-    // === ВАЛИДАЦИЯ ===
-    
-    // Проверка имени (минимум 2 слова)
     if (name.length() < 3) {
         errorMsg = "Введите полное имя (минимум 3 символа)";
         return false;
     }
     
-    // Проверка email через регулярное выражение
     regex emailPattern(R"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})");
     if (!regex_match(email, emailPattern)) {
         errorMsg = "Некорректный email адрес";
         return false;
     }
     
-    // Проверка телефона (должен начинаться с + или 8, минимум 10 цифр)
     regex phonePattern(R"([\+]?[78]?\d{10,11})");
     if (!regex_match(phone, phonePattern)) {
         errorMsg = "Некорректный номер телефона (формат: +79001234567)";
@@ -232,65 +219,61 @@ bool BookingManager::bookFlight(int flightId, const string& name, const string& 
     }
 
 
-    // 1. Ищем рейс
     Flight* flight = findFlightById(flightId);
     if (!flight) {
         errorMsg = "Рейс не найден";
         return false;
     }
     
-    // 2. Проверяем наличие мест
     if (flight->seats_booked >= flight->seats_total) {
         errorMsg = "На этом рейсе нет свободных мест";
         return false;
     }
     
-    // 3. Ищем или создаём пассажира
     Passenger* passenger = findPassengerByEmail(email);
     if (!passenger) {
-        // Создаём нового пассажира
         Passenger newPassenger(getNextPassengerId(), name, email, phone);
         passengers.push_back(newPassenger);
         passenger = &passengers.back();
         cout << "Создан новый пассажир: " << name << " (ID: " << passenger->id << ")" << endl;
     }
     
-    // 4. Генерируем номер места (простая логика: следующее по счёту)
     int seatNumber = flight->seats_booked + 1;
-    string seatNum = to_string(seatNumber) + "A"; // Например: "51A"
+    string seatNum = to_string(seatNumber) + "A";
     
-    // 5. Создаём бронь
-    Booking newBooking(getNextBookingId(), flightId, passenger->id, seatNum, "confirmed");
+    string code = generateSecretCode();
+    Booking newBooking(getNextBookingId(), flightId, passenger->id, seatNum, "confirmed", code);
     bookings.push_back(newBooking);
+
+    cout << "Создана бронь #" << newBooking.id << ", секретный код: " << code << endl;
     
-    // 6. Увеличиваем счётчик занятых мест
     flight->seats_booked++;
     
     cout << "Создана бронь #" << newBooking.id << " на рейс " << flight->number 
-         << ", место " << seatNum << endl;
+         << ", место " << seatNum << ", код бронирования: " << code << endl;
     
     return true;
 }
 
-// ============================================================
-// ОТМЕНА БРОНИ
-// ============================================================
-bool BookingManager::cancelBooking(int bookingId, string& errorMsg) {
+
+bool BookingManager::cancelBooking(int bookingId, const string& secretCode, string& errorMsg) {
     lock_guard<mutex> lock(data_mtx);
     
-    // Ищем бронь
     for (auto& b : bookings) {
         if (b.id == bookingId) {
-            // Проверяем, не отменена ли уже
             if (b.status == "cancelled") {
                 errorMsg = "Эта бронь уже отменена";
                 return false;
             }
             
-            // Меняем статус
+            // Проверка кода (пустой код = админ)
+            if (!secretCode.empty() && b.secret_code != secretCode) {
+                errorMsg = "Неверный секретный код";
+                return false;
+            }
+            
             b.status = "cancelled";
             
-            // Освобождаем место на рейсе
             Flight* flight = findFlightById(b.flight_id);
             if (flight && flight->seats_booked > 0) {
                 flight->seats_booked--;
@@ -305,21 +288,17 @@ bool BookingManager::cancelBooking(int bookingId, string& errorMsg) {
     return false;
 }
 
-// ============================================================
-// ПОЛУЧЕНИЕ БРОНЕЙ ПО EMAIL
-// ============================================================
+
 vector<Booking> BookingManager::getBookingsByEmail(const string& email) {
     lock_guard<mutex> lock(data_mtx);
     
     vector<Booking> result;
     
-    // Сначала находим пассажира
     Passenger* passenger = findPassengerByEmail(email);
     if (!passenger) {
-        return result; // Пустой вектор, пассажир не найден
+        return result;
     }
     
-    // Собираем все его брони
     for (const auto& b : bookings) {
         if (b.passenger_id == passenger->id) {
             result.push_back(b);
@@ -329,9 +308,6 @@ vector<Booking> BookingManager::getBookingsByEmail(const string& email) {
     return result;
 }
 
-// ============================================================
-// ВСПОМОГАТЕЛЬНЫЕ ГЕТТЕРЫ
-// ============================================================
 vector<Booking> BookingManager::getAllBookings() {
     lock_guard<mutex> lock(data_mtx);
     return bookings;
@@ -349,7 +325,6 @@ Flight BookingManager::getFlightById(int id) {
         if (f.id == id) return f;
     }
     
-    // Возвращаем "пустой" рейс с id = -1 как признак ошибки
     return Flight(-1, "", "", "", "", "", 0, 0, 0);
 }
 

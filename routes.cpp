@@ -1,23 +1,41 @@
 #include "routes.h"
 #include "utils.h"
-
 #include <iostream>
 #include <regex>
+#include <set>
 
 using namespace std;
 
+
+
+set<string> adminSessions;
+
+string generateSessionToken() {
+    static mt19937 rng(time(nullptr));
+    uniform_int_distribution<long long> dist(1000000000LL, 9999999999LL);
+    return to_string(dist(rng));
+}
+
+bool isAdminAuthorized(const httplib::Request& req) {
+    if (req.has_header("Cookie")) {
+        string cookie = req.get_header_value("Cookie");
+        size_t pos = cookie.find("admin_session=");
+        if (pos != string::npos) {
+            string token = cookie.substr(pos + 14, 10);
+            return adminSessions.count(token) > 0;
+        }
+    }
+    return false;
+}
+
 void setupRoutes(httplib::Server& svr, BookingManager& manager) {
     
-    // ==========================================
-    // GET / — Главная страница
-    // ==========================================
+
     svr.Get("/", [](const httplib::Request& req, httplib::Response& res) {
         res.set_content(renderTemplate("index.html"), "text/html; charset=utf-8");
     });
-    
-    // ==========================================
-    // GET /flights — Все рейсы
-    // ==========================================
+
+
     svr.Get("/flights", [&manager](const httplib::Request& req, httplib::Response& res) {
         auto flights = manager.getAllFlights();
         
@@ -50,9 +68,7 @@ void setupRoutes(httplib::Server& svr, BookingManager& manager) {
         res.set_content(renderTemplate("flights.html", data), "text/html; charset=utf-8");
     });
     
-    // ==========================================
-    // POST /search — Поиск рейсов
-    // ==========================================
+
     svr.Post("/search", [&manager](const httplib::Request& req, httplib::Response& res) {
         string from = req.get_param_value("from");
         string to = req.get_param_value("to");
@@ -82,9 +98,7 @@ void setupRoutes(httplib::Server& svr, BookingManager& manager) {
         res.set_content(renderTemplate("search_results.html", data), "text/html; charset=utf-8");
     });
     
-    // ==========================================
-    // GET /book/:id — Форма бронирования
-    // ==========================================
+
     svr.Get(R"(/book/(\d+))", [&manager](const httplib::Request& req, httplib::Response& res) {
         int flightId = stoi(req.matches[1]);
         Flight flight = manager.getFlightById(flightId);
@@ -109,9 +123,7 @@ void setupRoutes(httplib::Server& svr, BookingManager& manager) {
         res.set_content(renderTemplate("booking_form.html", data), "text/html; charset=utf-8");
     });
     
-    // ==========================================
-    // POST /book — Создание брони
-    // ==========================================
+
     svr.Post("/book", [&manager](const httplib::Request& req, httplib::Response& res) {
         int flightId = stoi(req.get_param_value("flight_id"));
         string name = req.get_param_value("name");
@@ -125,10 +137,15 @@ void setupRoutes(httplib::Server& svr, BookingManager& manager) {
             manager.saveData();
             
             Flight flight = manager.getFlightById(flightId);
+            
+            auto allBookings = manager.getAllBookings();
+            string secretCode = allBookings.back().secret_code;
+            
             map<string, string> data = {
                 {"MESSAGE", "Бронирование успешно!"},
                 {"DETAILS", "Рейс " + flight.number + " (" + flight.from + " → " + flight.to + ")"},
-                {"EMAIL", email}
+                {"EMAIL", email},
+                {"SECRET_CODE", secretCode}
             };
             res.set_content(renderTemplate("success.html", data), "text/html; charset=utf-8");
         } else {
@@ -147,9 +164,7 @@ void setupRoutes(httplib::Server& svr, BookingManager& manager) {
         }
     });
     
-    // ==========================================
-    // GET /my-bookings — Мои брони
-    // ==========================================
+
     svr.Get("/my-bookings", [&manager](const httplib::Request& req, httplib::Response& res) {
         string email = req.get_param_value("email");
         
@@ -177,10 +192,7 @@ void setupRoutes(httplib::Server& svr, BookingManager& manager) {
                     bookingsHtml += "</div>";
                     
                     if (b.status == "confirmed") {
-                        bookingsHtml += "<form action='/cancel/" + to_string(b.id) + "' method='POST' style='margin:0'>";
-                        bookingsHtml += "<input type='hidden' name='email' value='" + email + "'>";
-                        bookingsHtml += "<button class='cancel' type='submit'>Отменить</button>";
-                        bookingsHtml += "</form>";
+                        bookingsHtml += "<a class='btn cancel' href='/cancel/" + to_string(b.id) + "?email=" + email + "'>Отменить</a>";
                     }
                     bookingsHtml += "</div>";
                 }
@@ -194,24 +206,66 @@ void setupRoutes(httplib::Server& svr, BookingManager& manager) {
         res.set_content(renderTemplate("my_bookings.html", data), "text/html; charset=utf-8");
     });
     
-    // ==========================================
-    // POST /cancel/:id — Отмена брони
-    // ==========================================
-    svr.Post(R"(/cancel/(\d+))", [&manager](const httplib::Request& req, httplib::Response& res) {
+
+   svr.Get(R"(/cancel/(\d+))", [&manager](const httplib::Request& req, httplib::Response& res) {
         int bookingId = stoi(req.matches[1]);
         string email = req.get_param_value("email");
         
-        string error;
-        manager.cancelBooking(bookingId, error);
-        manager.saveData();
+        auto bookings = manager.getAllBookings();
+        for (const auto& b : bookings) {
+            if (b.id == bookingId) {
+                Flight f = manager.getFlightById(b.flight_id);
+                map<string, string> data = {
+                    {"BOOKING_ID", to_string(b.id)},
+                    {"FLIGHT_INFO", f.number + ": " + f.from + " → " + f.to},
+                    {"SEAT", b.seat_num},
+                    {"EMAIL", email},
+                    {"ERROR", ""}
+                };
+                res.set_content(renderTemplate("cancel_confirm.html", data), "text/html; charset=utf-8");
+                return;
+            }
+        }
         
-        res.set_redirect("/my-bookings?email=" + email);
+        res.status = 404;
+        res.set_content("<h1>Бронь не найдена</h1>", "text/html; charset=utf-8");
+    });
+
+   svr.Post(R"(/cancel/(\d+))", [&manager](const httplib::Request& req, httplib::Response& res) {
+        int bookingId = stoi(req.matches[1]);
+        string email = req.get_param_value("email");
+        string secretCode = req.get_param_value("secret_code");
+        
+        string error;
+        if (manager.cancelBooking(bookingId, secretCode, error)) {
+            manager.saveData();
+            res.set_redirect("/my-bookings?email=" + email);
+        } else {
+            auto bookings = manager.getAllBookings();
+            for (const auto& b : bookings) {
+                if (b.id == bookingId) {
+                    Flight f = manager.getFlightById(b.flight_id);
+                    map<string, string> data = {
+                        {"BOOKING_ID", to_string(b.id)},
+                        {"FLIGHT_INFO", f.number + ": " + f.from + " → " + f.to},
+                        {"SEAT", b.seat_num},
+                        {"EMAIL", email},
+                        {"ERROR", "<div class='error'>" + error + "</div>"}
+                    };
+                    res.set_content(renderTemplate("cancel_confirm.html", data), "text/html; charset=utf-8");
+                    return;
+                }
+            }
+        }
     });
     
-    // ==========================================
-    // GET /admin — Админ-панель
-    // ==========================================
+
     svr.Get("/admin", [&manager](const httplib::Request& req, httplib::Response& res) {
+        if (!isAdminAuthorized(req)) {
+            res.set_redirect("/admin/login");
+            return;
+        }
+        
         auto bookings = manager.getAllBookings();
         
         string rowsHtml;
@@ -227,6 +281,13 @@ void setupRoutes(httplib::Server& svr, BookingManager& manager) {
             rowsHtml += "<td>" + p.name + "<br><small>" + p.email + "</small></td>";
             rowsHtml += "<td>" + b.seat_num + "</td>";
             rowsHtml += "<td><span class='" + statusClass + "'>" + statusText + "</span></td>";
+            
+            if (b.status == "confirmed") {
+                rowsHtml += "<td><form action='/admin/cancel/" + to_string(b.id) + "' method='POST' style='margin:0'>";
+                rowsHtml += "<button class='cancel' type='submit'>Отменить</button></form></td>";
+            } else {
+                rowsHtml += "<td>-</td>";
+            }
             rowsHtml += "</tr>";
         }
         
@@ -236,10 +297,48 @@ void setupRoutes(httplib::Server& svr, BookingManager& manager) {
         };
         res.set_content(renderTemplate("admin.html", data), "text/html; charset=utf-8");
     });
+
+    svr.Get("/admin/login", [](const httplib::Request& req, httplib::Response& res) {
+        map<string, string> data = {{"ERROR", ""}};
+        res.set_content(renderTemplate("admin_login.html", data), "text/html; charset=utf-8");
+    });
+
+    svr.Post("/admin/login", [&manager](const httplib::Request& req, httplib::Response& res) {
+        string username = req.get_param_value("username");
+        string password = req.get_param_value("password");
+        
+        if (username == BookingManager::ADMIN_USERNAME && password == BookingManager::ADMIN_PASSWORD) {
+            string token = generateSessionToken();
+            adminSessions.insert(token);
+            
+            res.set_header("Set-Cookie", "admin_session=" + token + "; Path=/; HttpOnly");
+            res.set_redirect("/admin");
+        } else {
+            map<string, string> data = {{"ERROR", "<div class='error'>Неверный логин или пароль</div>"}};
+            res.set_content(renderTemplate("admin_login.html", data), "text/html; charset=utf-8");
+        }
+    });
+
+   svr.Get("/admin/logout", [](const httplib::Request& req, httplib::Response& res) {
+        res.set_header("Set-Cookie", "admin_session=; Path=/; Max-Age=0");
+        res.set_redirect("/");
+    });
+
+   svr.Post(R"(/admin/cancel/(\d+))", [&manager](const httplib::Request& req, httplib::Response& res) {
+        if (!isAdminAuthorized(req)) {
+            res.set_redirect("/admin/login");
+            return;
+        }
+        
+        int bookingId = stoi(req.matches[1]);
+        string error;
+        manager.cancelBooking(bookingId, "", error);
+        manager.saveData();
+        
+        res.set_redirect("/admin");
+    });
     
-    // ==========================================
-    // Обработка 404
-    // ==========================================
+
     svr.set_error_handler([](const httplib::Request& req, httplib::Response& res) {
         string html = R"(
             <!DOCTYPE html>
