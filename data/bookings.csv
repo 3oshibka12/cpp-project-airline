@@ -10,3 +10,4 @@ id,flight_id,passenger_id,seat_num,status,secret_code
 9,2,3,21A,cancelled,
 10,2,4,21A,cancelled,
 11,4,4,1A,cancelled,929422
+12,4,4,1A,cancelled,405977
